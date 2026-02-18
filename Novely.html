@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novely: เครื่องมือช่วยเขียนนิยาย</title>
+    <link rel="icon" type="image/png" href="img/N.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+    <script src="https://unpkg.com/gsap@3/dist/MotionPathPlugin.min.js"></script>
+    <script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 1. GENERAL & LAYOUT --- */
+        :root {
+            --color-bg-body: #FEEFDB;
+            --color-bg-box: #FFF8EF;
+            --color-text-main: #332B21;
+            --color-accent-start: #FBD59F;
+            --color-accent-end: #F7B150;
+        }
+        body {
+            font-family: 'Kanit', 'Outfit', sans-serif;
+            background-color: var(--color-bg-body);
+            color: var(--color-text-main);
+            overflow: hidden;
+        }
+        .container { 
+            max-width: 960px; 
+        }
+
+        /* --- 2. SCROLLING & PAGE STRUCTURE --- */
+        #main-wrapper { 
+            overflow: hidden; 
+        }
+        #main-content {
+            display: flex;
+            width: 200%;
+        }
+        .page-section {
+            width: 50%;
+            flex-shrink: 0;
+            padding: 2rem;
+            box-sizing: border-box;
+            min-height: 70vh;
+        }
+        #page-generate-layout { 
+            display: flex; 
+            gap: 2rem; 
+            align-items: flex-start; 
+        }
+        #input-container { 
+            width: 100%; 
+            flex-shrink: 0; 
+        }
+        #page-saved {
+            position: fixed; /* Use fixed to cover the whole screen */
+            inset: 0;
+            background-color: var(--color-bg-body);
+            z-index: 20; /* Make sure it's on top of everything */
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            overflow-y: auto; /* Allow this panel to scroll if content is long */
+        }
+
+        /* --- 3. COMPONENTS & UI ELEMENTS --- */
+        .box-shadow-accent { 
+            box-shadow: 0 0 0 3px var(--color-accent-end), 0 0 0 6px var(--color-accent-start); 
+        }
+        .btn-accent {
+            background-image: linear-gradient(to bottom, var(--color-accent-end), var(--color-accent-start));
+            color: var(--color-text-main);
+            border: 1px solid var(--color-accent-end);
+        }
+        .btn-accent:hover { 
+            opacity: 0.9; 
+            transform: scale(1.05); 
+        }
+        .input-focus:focus { 
+            border-color: var(--color-accent-end); 
+            box-shadow: 0 0 0 2px var(--color-accent-start); 
+        }
+        ::-webkit-scrollbar { 
+            width: 10px; 
+            background-color: transparent; 
+        }
+        ::-webkit-scrollbar-thumb { 
+            background-color: var(--color-accent-end); 
+            border-radius: 10px; 
+            border: 2px solid transparent; 
+            background-clip: content-box; 
+        }
+        ::-webkit-scrollbar-thumb:hover { 
+            background-color: var(--color-accent-start); 
+        }
+
+        /* --- 4. ANIMATION & DECORATIVE STYLES --- */
+        #home-hero-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 600px; 
+            height: 450px; 
+            margin: 0 auto; 
+        }
+        #logo-container { 
+            position: absolute; 
+            top: 0; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 500px; 
+            height: 300px; 
+        }
+        #logo-container img { 
+            position: absolute; 
+            transform-origin: center center; 
+        }
+        #background-waves { 
+            position: fixed; 
+            inset: 0; 
+            z-index: -1; 
+            overflow: hidden; 
+            opacity: 0.7; 
+        }
+        #background-waves .wave-bg { 
+            position: absolute; 
+            will-change: transform; 
+        }
+        #wave1-bg { 
+            width: 40vw; 
+            min-width: 300px; 
+        }
+        #wave2-bg { 
+            width: 45vw; 
+            min-width: 350px; 
+        }
+        #wave-paths { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+            pointer-events: none; 
+            opacity: 0; 
+        }
+    </style>
+</head>
+<body class="bg-[#FFF8EF] text-[--color-text-main]">
+    <div id="background-waves">
+        <svg id="wave-paths" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+            <path id="path1" d="M -200,300 C 300,0 800,600 1300,300 S 1800,0 2200,300" fill="none"></path>
+            <path id="path2" d="M 2200,800 C 1700,1100 1200,500 700,800 S 200,1100 -200,800" fill="none"></path>
+        </svg>
+        <img src="img/wave1.png" alt="Smokey Wave 1" id="wave1-bg" class="wave-bg">
+        <img src="img/wave2.png" alt="Smokey Wave 2" id="wave2-bg" class="wave-bg">
+    </div>
+    <div id="save-modal" class="fixed inset-0 bg-[#332B21] bg-opacity-80 flex items-center justify-center z-50 hidden">
+        <div class="bg-box bg-[--color-bg-box] p-8 rounded-2xl shadow-2xl w-full max-w-md border border-[--color-accent-end]">
+            <h3 class="text-2xl font-bold text-[--color-text-main] mb-6 text-center">บันทึกนิยาย</h3>
+            <div class="space-y-4">
+                <div>
+                    <label for="novel-title-input" class="block text-sm font-medium mb-1 text-[--color-text-main]">ชื่อนิยาย</label>
+                    <input type="text" id="novel-title-input" class="w-full bg-[--color-bg-box] text-[--color-text-main] p-3 rounded-xl input-focus border border-[--color-accent-start]" placeholder="เช่น: มังกรผู้พิทักษ์ดวงดาว">
+                </div>
+                <div>
+                    <label for="novel-desc-input" class="block text-sm font-medium mb-1 text-[--color-text-main]">คำอธิบายย่อ</label>
+                    <textarea id="novel-desc-input" rows="3" class="w-full bg-[--color-bg-box] text-[--color-text-main] p-3 rounded-xl input-focus border border-[--color-accent-start]" placeholder="เรื่องย่อสั้นๆ หรือรายละเอียดที่สำคัญ"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-4 mt-8">
+                <button id="cancel-save-btn" class="px-6 py-3 text-[--color-text-main] hover:text-[#332B21] bg-transparent border border-[#332B21] rounded-full font-semibold transition-colors">ยกเลิก</button>
+                <button id="confirm-save-btn" class="px-6 py-3 font-bold rounded-full shadow-lg transition-transform transform hover:scale-105 btn-accent">ยืนยันบันทึก</button>
+            </div>
+        </div>
+    </div>
+    <div id="loading-spinner" class="fixed inset-0 bg-[#332B21] bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[--color-accent-end]"></div>
+    </div>
+    
+    <div class="min-h-screen flex flex-col items-center p-4">
+        <div class="w-full container relative">
+            <header class="mb-8 p-4">
+                <div class="flex flex-col md:flex-row items-center justify-between">
+                    <div id="header-logo" class="cursor-pointer">
+                        <img src="img/mini-logo.png" alt="Novely Logo" style="width: 50px;">
+                    </div>
+                    <nav id="navbar" class="mt-4 md:mt-0 flex justify-center space-x-4">
+                        <button data-page="home" class="nav-btn px-4 py-2 rounded-full font-semibold transition-colors bg-[--color-accent-start] text-[--color-text-main]">Start</button>
+                        <button data-page="generate" class="nav-btn px-4 py-2 rounded-full font-semibold transition-colors hover:bg-[--color-accent-start] text-[--color-text-main]">Novel Gen</button>
+                        <button data-page="saved" class="nav-btn px-4 py-2 rounded-full font-semibold transition-colors hover:bg-[--color-accent-start] text-[--color-text-main]">Saved Novels</button>
+                    </nav>
+                </div>
+                <div id="auth-status" class="mt-4 text-sm text-[--color-text-main] text-center md:text-left"></div>
+            </header>
+
+            <div id="main-wrapper">
+                <main id="main-content">
+                    <section id="page-home" class="page-section text-center overflow-hidden">
+                        <div id="home-hero-container">
+                            <div id="logo-container">
+                                <img id="logo-N" src="img/N.png" alt="N" style="width: 180px; top: 25px; left: -40px;">
+                                <img id="logo-eye" src="img/eye-ball.png" alt="eye" style="width: 42px; top: 125px; left: 170px;">
+                                <img id="logo-l" src="img/l.png" alt="l" style="width: 140px; top: -5px; left: 320px;">
+                                <img id="logo-y" src="img/y.png" alt="y" style="width: 95px; top: 115px; left: 430px;">
+                                <img id="logo-ele1" src="img/ele1.png" alt="Decorative Element" style="width: 60px; top: 140px; left: 88px;">
+                                <img id="logo-face" src="img/face.png" alt="ove" style="width: 240px; top: 105px; left: 135px;">
+                                <img id="logo-book" src="img/book.png" alt="Book Icon" style="width: 105px; top: 175px; left: 140px;">
+                            </div>
+                            <div id="home-text-content" class="absolute w-full space-y-4" style="top: 300px;">
+                                <h2 class="text-4xl font-semibold text-[--color-text-main]">Welcome to Novely</h2>
+                                <p class="text-xl">Just read the novel</p>
+                                <button id="go-to-generate-btn" class="px-8 py-4 font-bold rounded-full shadow-lg transition-transform transform hover:scale-105 btn-accent text-lg">เริ่มสร้างนิยาย!</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="page-generate" class="page-section">
+                        <div id="page-generate-layout">
+                           <div id="input-container">
+                                <div class="p-6 rounded-2xl box-shadow-accent">
+                                    <h2 class="text-2xl font-semibold mb-4 text-[--color-text-main]">สร้างโครงเรื่องนิยายของคุณ</h2>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label for="genre" class="block text-sm font-medium mb-1 text-[--color-text-main]">แนวเรื่อง</label>
+                                            <input type="text" id="genre" class="w-full bg-[--color-bg-box] text-[--color-text-main] p-3 rounded-xl input-focus border border-[--color-accent-start]" placeholder="เช่น: Sci-Fi, Fantasy">
+                                        </div>
+                                        <div>
+                                            <label for="characters" class="block text-sm font-medium mb-1 text-[--color-text-main]">ตัวละครหลัก</label>
+                                            <input type="text" id="characters" class="w-full bg-[--color-bg-box] text-[--color-text-main] p-3 rounded-xl input-focus border border-[--color-accent-start]" placeholder="เช่น: อเล็กซ์, นักสืบ">
+                                        </div>
+                                        <div class="col-span-1 md:col-span-2">
+                                            <label for="plot-points" class="block text-sm font-medium mb-1 text-[--color-text-main]">จุดพลิกผัน/เหตุการณ์สำคัญ</label>
+                                            <textarea id="plot-points" rows="3" class="w-full bg-[--color-bg-box] text-[--color-text-main] p-3 rounded-xl input-focus border border-[--color-accent-start]" placeholder="เรื่องราวเริ่มต้นที่..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div id="creation-controls" class="flex justify-center mt-6 space-x-4">
+                                        <button id="generate-plot-btn" class="px-6 py-3 font-bold rounded-full shadow-lg transition-transform transform hover:scale-105 btn-accent">สร้างพล็อตเรื่อง</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="output-container" class="p-6 rounded-2xl space-y-4 box-shadow-accent w-full" style="display: none;"> 
+                                <h2 class="text-2xl font-semibold text-[--color-text-main]">เนื้อหานิยายที่สร้างโดย AI</h2>
+                                <div id="navigation-buttons" class="flex justify-start flex-wrap space-x-2 space-y-2 mb-4"></div>
+                                <div id="novel-output" contenteditable="true" class="text-[--color-text-main] p-4 bg-[--color-bg-box] rounded-xl overflow-y-auto max-h-[50vh] input-focus border border-[--color-accent-start] min-h-[150px]"></div>
+                                <div id="creation-controls-output" class="flex justify-center mt-4 space-x-4">
+                                    <button id="generate-chapter-btn" class="px-6 py-3 font-bold rounded-full shadow-lg transition-transform transform hover:scale-105 btn-accent">เขียนบทนิยาย</button>
+                                    <button id="save-novel-btn" class="px-6 py-3 bg-[#332B21] text-[#FFF8EF] font-bold rounded-full shadow-lg transition-transform transform hover:scale-105">บันทึกนิยาย</button>
+                                </div>
+                                <div id="editing-controls" class="flex justify-center mt-4 space-x-4 hidden">
+                                    <button id="save-changes-btn" class="px-6 py-3 font-bold rounded-full shadow-lg btn-accent">บันทึกการเปลี่ยนแปลง</button>
+                                    <button id="cancel-edit-btn" class="px-6 py-3 bg-gray-500 text-white font-bold rounded-full shadow-lg">ยกเลิก</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </main>
+            </div>
+            
+            
+        </div>
+        <section id="page-saved" class="page-section">
+                <div id="saved-list-container" class="p-6 rounded-2xl box-shadow-accent">
+                    <h2 class="text-2xl font-semibold mb-4">นิยายที่บันทึกไว้</h2>
+                    <div id="saved-novels-list" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
+                </div>
+                <div id="saved-detail-container" class="p-6 rounded-2xl box-shadow-accent hidden">
+                    <button id="back-to-list-btn" class="px-4 py-2 mb-4 font-semibold rounded-full btn-accent hover:opacity-90">&larr; กลับสู่รายการ</button>
+                    <h2 id="detail-title" class="text-3xl font-bold mb-4"></h2>
+                    <div id="detail-metadata" class="text-sm space-y-1 mb-6 border-b pb-4 border-[--color-accent-start]"></div>
+                    <h3 class="text-xl font-semibold mb-2">เนื้อหา:</h3>
+                    <div id="detail-content" class="bg-gray-100 p-4 rounded-xl max-h-[60vh] overflow-y-auto border border-[--color-accent-start]"></div>
+                    
+                </div>
+            </section>
+    </div>
+    
+   <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, deleteDoc, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        gsap.registerPlugin(MotionPathPlugin, ScrollTrigger);
+        
+
+        // --- All const and let declarations ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyA5hncPE5CKhjr--D-eRWVVjySCDtWYHK8",
+            authDomain: "novely-project.firebaseapp.com",
+            projectId: "novely-project",
+            storageBucket: "novely-project.firebasestorage.app",
+            messagingSenderId: "789200193057",
+            appId: "1:789200193057:web:cf2f640be641419aab4560",
+            measurementId: "G-6D2YPCZMR7"
+        };
+        const appId = 'novely-local-app'; 
+        const authStatusEl = document.getElementById('auth-status');
+        const mainContentEl = document.getElementById('main-content');
+        const headerLogo = document.getElementById('header-logo');
+        const loadingSpinnerEl = document.getElementById('loading-spinner');
+        const generatePlotBtn = document.getElementById('generate-plot-btn');
+        const generateChapterBtn = document.getElementById('generate-chapter-btn');
+        const saveNovelBtn = document.getElementById('save-novel-btn'); 
+        const novelOutputEl = document.getElementById('novel-output');
+        const savedNovelsListEl = document.getElementById('saved-novels-list');
+        const navigationButtonsEl = document.getElementById('navigation-buttons');
+        const genreInput = document.getElementById('genre');
+        const charactersInput = document.getElementById('characters');
+        const plotPointsInput = document.getElementById('plot-points');
+        const inputContainer = document.getElementById('input-container');
+        const outputContainer = document.getElementById('output-container');
+        const saveModalEl = document.getElementById('save-modal');
+        const novelTitleInput = document.getElementById('novel-title-input');
+        const novelDescInput = document.getElementById('novel-desc-input');
+        const confirmSaveBtn = document.getElementById('confirm-save-btn');
+        const cancelSaveBtn = document.getElementById('cancel-save-btn');
+        const navButtons = document.querySelectorAll('.nav-btn');
+        const pageHome = document.getElementById('page-home');
+        const pageGenerate = document.getElementById('page-generate');
+        const pageSaved = document.getElementById('page-saved');
+        const goToGenerateBtn = document.getElementById('go-to-generate-btn');
+        const savedListContainer = document.getElementById('saved-list-container');
+        const savedDetailContainer = document.getElementById('saved-detail-container');
+        const backToListBtn = document.getElementById('back-to-list-btn');
+        const creationControls = document.getElementById('creation-controls');
+        const creationControlsOutput = document.getElementById('creation-controls-output');
+        const editingControls = document.getElementById('editing-controls');
+        const saveChangesBtn = document.getElementById('save-changes-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+        let db, auth, userId;
+        let currentNovel = {};
+        let novelContent = { plot: '', chapters: {} }; 
+        let currentView = 'plot';
+        let currentPage = 'home';
+        let isAnimating = false;
+        let currentEditingDocId = null;
+        
+        // --- ANIMATION LOGIC ---
+        gsap.timeline({
+            defaults: { duration: 15, ease: "sine.inOut" },
+            repeat: -1, yoyo: true
+        })
+        .to("#wave1-bg", { motionPath: { path: "#path1", align: "#path1", alignOrigin: [0.5, 0.5] }, scale: 1.25, rotation: -20 }, 0)
+        .to("#wave2-bg", { motionPath: { path: "#path2", align: "#path2", alignOrigin: [0.5, 0.5] }, scale: 1.25, rotation: 20 }, 0);
+        
+        
+        
+        function playHomeAnimation() {
+            const tl = gsap.timeline();
+            tl.set("#logo-container img, #home-text-content", { autoAlpha: 0 });
+            tl.set("#logo-N", { x: -100, rotation: -45 });
+            tl.set("#logo-face", { y: -100 });
+            tl.set("#logo-eye", { scale: 0 });
+            tl.set("#logo-l", { y: 60, rotation: 60 });
+            tl.set("#logo-y", { x: 100 });
+            tl.set("#logo-book", { x: -50, y: 50, rotation: -90 });
+            tl.set("#logo-ele1", { x: 50, y: -50, rotation: 90 });
+            tl.set("#home-text-content", { y: 30 });
+            
+            tl.to("#logo-N", { x: 0, rotation: 0, autoAlpha: 1, duration: 0.8, ease: "power3.out" }, 0.2);
+            tl.to("#logo-face", { y: 0, autoAlpha: 1, duration: 0.7, ease: "back.out(1.7)" }, 0.4);
+            tl.to("#logo-l", { y: 0, rotation: 0, autoAlpha: 1, duration: 0.8, ease: "power3.out" }, 0.3);
+            tl.to("#logo-y", { x: 0, autoAlpha: 1, duration: 0.8, ease: "power3.out" }, 0.2);
+            tl.to("#logo-eye", { scale: 1, autoAlpha: 1, duration: 0.5, ease: "elastic.out(1, 0.3)" }, 0.8);
+            tl.to("#logo-eye", { scaleY: 0.1, duration: 0.1, repeat: 50, yoyo: true, repeatDelay: 1 }, ">");
+            tl.to("#logo-book", { x: 0, y: 0, rotation: 0, autoAlpha: 1, duration: 1, ease: "elastic.out(1, 0.5)" }, 0.5);
+            tl.to("#logo-ele1", { x: 0, y: 0, rotation: 0, autoAlpha: 1, duration: 1, ease: "elastic.out(1, 0.5)" }, 0.6);
+            tl.to("#home-text-content", { y: 0, autoAlpha: 1, duration: 0.8, ease: "power2.out" }, 1);
+        }
+        const goToGenerateTimeline = gsap.timeline({
+    paused: true,
+    onStart: () => { isAnimating = true; },
+    onComplete: () => {
+        isAnimating = false;
+        currentPage = 'generate';
+        updateNavBar();
+    }
+});
+// 1. Home page exit animation
+goToGenerateTimeline
+    .to("#logo-container", { y: -5, scale: 1.1, ease: "back.out(1.5)", duration: 0.4 })
+    .to("#logo-container", { y: 20, ease: "power1.in" }, ">")
+    .to(["#logo-container", "#home-text-content"], { 
+        x: "-50vw", 
+        autoAlpha: 0, 
+        duration: 0.8, 
+        ease: "power2.in" 
+    }, "<");
+// 2. Slide the entire page container
+goToGenerateTimeline.to("#main-content", { xPercent: -50, duration: 1, ease: "power2.inOut" }, "<+=0.4");
+// 3. Animate the generate box into view
+goToGenerateTimeline.from("#input-container", { x: "50vw", autoAlpha: 0, duration: 0.8, ease: "power2.out" }, ">-0.6");
+        
+        function showSideBySideLayout() {
+            gsap.to(inputContainer, { duration: 0.7, width: '40%', ease: "power3.inOut" });
+            outputContainer.style.display = 'block';
+            gsap.fromTo(outputContainer, { opacity: 0, x: 30 }, { duration: 0.7, opacity: 1, x: 0, ease: "power3.inOut", delay: 0.2 });
+        }
+        
+        // --- NAVIGATION LOGIC ---
+        function updateNavBar() {
+             navButtons.forEach(btn => {
+                const isCurrent = btn.dataset.page === currentPage;
+                btn.classList.toggle('bg-[--color-accent-end]', isCurrent);
+                btn.classList.toggle('shadow-md', isCurrent);
+                btn.classList.toggle('bg-[--color-accent-start]', !isCurrent);
+            });
+        }
+
+        function navigateTo(page) {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            const leavingSaved = currentPage === 'saved' && page !== 'saved';
+
+            if (leavingSaved) {
+                gsap.to("#page-saved", { 
+                    xPercent: -100, autoAlpha: 0, duration: 0.6, ease: "power3.in",
+                    onStart: () => { pageSaved.style.pointerEvents = 'none'; },
+                    onComplete: () => { handleMainNavigation(page); }
+                });
+            } else {
+                handleMainNavigation(page);
+            }
+        }
+
+        function handleMainNavigation(page) {
+            if (page === 'generate' && currentPage !== 'generate') {
+                goToGenerateTimeline.play().then(() => { isAnimating = false; });
+                currentPage = 'generate';
+            } else if (page === 'home' && currentPage !== 'home') {
+                goToGenerateTimeline.reverse().then(() => { isAnimating = false; });
+                currentPage = 'home';
+            } else if (page === 'saved' && currentPage !== 'saved') {
+                gsap.fromTo("#page-saved", 
+                    { xPercent: -100, autoAlpha: 1, visibility: 'visible' }, 
+                    { xPercent: 0, duration: 0.6, ease: "power3.out", 
+                      onStart: () => pageSaved.style.pointerEvents = 'auto', 
+                      onComplete: () => isAnimating = false 
+                    }
+                );
+                currentPage = 'saved';
+            } else {
+                isAnimating = false;
+            }
+
+            // Always reset the generate page if we are NOT navigating to it for an edit
+            if (page !== 'generate') {
+                resetGeneratePage();
+            }
+
+            updateNavBar();
+        }
+
+        ScrollTrigger.create({
+            trigger: "#main-wrapper",
+            start: "top top",
+            end: "bottom+=100%", 
+            scrub: 1.5,
+            animation: goToGenerateTimeline,
+            onScrubComplete: (self) => {
+                const newPage = self.progress > 0.5 ? 'generate' : 'home';
+                if (currentPage !== newPage) {
+                    currentPage = newPage;
+                    updateNavBar();
+                }
+            }
+        });
+        // --- EVENT LISTENERS ---
+        headerLogo.addEventListener('click', () => navigateTo('home'));
+        navButtons.forEach(btn => btn.addEventListener('click', () => navigateTo(btn.dataset.page)));
+        goToGenerateBtn.addEventListener('click', () => navigateTo('generate'));
+        saveChangesBtn.addEventListener('click', updateNovel);
+        cancelEditBtn.addEventListener('click', () => navigateTo('saved'));
+
+        // --- FIREBASE & APP LOGIC ---
+        function populateEditorWithNovel(novelData, docId) {
+            currentEditingDocId = docId;
+            navigateTo('generate');
+            // Use a short delay to allow the navigation animation to start
+            setTimeout(() => {
+                lockPlotInputs(novelData);
+                novelContent.plot = novelData.plot;
+                novelContent.chapters = novelData.chapters || {};
+                rebuildChapterNav();
+                currentView = 'plot';
+                renderContent();
+                showSideBySideLayout(); // Show the side-by-side view immediately
+                creationControls.classList.add('hidden');
+                creationControlsOutput.classList.add('hidden');
+                editingControls.classList.remove('hidden');
+            }, 100); // 100ms delay
+        }
+
+        function resetGeneratePage() {
+            currentEditingDocId = null;
+            unlockPlotInputs();
+            novelContent = { plot: '', chapters: {} };
+            novelOutputEl.innerHTML = `<p class="text-center text-[--color-text-main] pointer-events-none">กรอกรายละเอียดเพื่อสร้างพล็อตเรื่อง</p>`;
+            navigationButtonsEl.innerHTML = '';
+            navigationButtonsEl.classList.add('hidden');
+            creationControls.classList.remove('hidden');
+            creationControlsOutput.classList.remove('hidden');
+            editingControls.classList.add('hidden');
+            // Reset layout
+            gsap.set(outputContainer, { display: 'none' });
+            gsap.set(inputContainer, { width: '100%' });
+        }
+
+        function renderSavedNovelDetail(novelData, docId) {
+    savedListContainer.classList.add('hidden');
+    savedDetailContainer.classList.remove('hidden');
+
+    document.getElementById('detail-title').textContent = novelData.title;
+    document.getElementById('detail-metadata').innerHTML = `
+        <p><strong>แนวเรื่อง:</strong> ${novelData.genre || 'N/A'}</p>
+        <p><strong>ตัวละครหลัก:</strong> ${novelData.characters || 'N/A'}</p>
+        <p><strong>คำอธิบาย:</strong> ${novelData.description || 'N/A'}</p>`;
+
+    let contentHTML = `
+    <h4>**พล็อตเรื่อง:**</h4>
+    <div class="mt-2 p-3 bg-[--color-bg-box] rounded">${novelData.plot.replace(/\n/g, '<br>')}</div>
+    <hr class="my-4">`;
+    if (novelData.chapters && Object.keys(novelData.chapters).length > 0) {
+        Object.keys(novelData.chapters).sort((a, b) => parseInt(a) - parseInt(b)).forEach(chapterNum => {
+            contentHTML += `<h4 class="mt-4">**บทที่ ${chapterNum}:**</h4><div class="mt-2 p-3 bg-[#F2EFE8] rounded">${novelData.chapters[chapterNum].replace(/\n/g, '<br>')}</div>`;
+        });
+    }
+    contentHTML += `
+        <div id="detail-content" class="p-4 rounded-xl overflow-y-auto border border-[--color-accent-start]">
+    </div>
+    <div class="flex justify-center mt-6 space-x-4">
+    <button id="detail-edit-btn" class="px-6 py-3 font-bold rounded-full shadow-lg btn-accent">แก้ไขนิยายนี้</button>
+    <button id="detail-delete-btn" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full">ลบนิยายนี้</button>
+</div>
+    `;
+    const detailContentEl = document.getElementById('detail-content');
+detailContentEl.innerHTML = contentHTML;
+
+    detailContentEl.querySelector('#detail-edit-btn').addEventListener('click', () => {
+        populateEditorWithNovel(novelData, docId);
+    });
+    detailContentEl.querySelector('#detail-delete-btn').addEventListener('click', () => {
+        if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบนิยาย "${novelData.title}"?`)) {
+            deleteNovel(docId, novelData.title);
+        }
+    });
+    detailContentEl.classList.add('bg-[--color-bg-box]');
+    detailContentEl.classList.add('max-h-[35vh]');
+}
+
+        function unlockPlotInputs() {
+            genreInput.value = '';
+            charactersInput.value = '';
+            plotPointsInput.value = '';
+            genreInput.disabled = false;
+            charactersInput.disabled = false;
+            plotPointsInput.disabled = false;
+        }
+
+        function rebuildChapterNav() {
+            navigationButtonsEl.innerHTML = `<button id="plot-nav-btn" class="px-4 py-2 bg-[--color-accent-start] hover:bg-[--color-accent-end] text-[--color-text-main] rounded-full font-semibold">พล็อต</button>`;
+            Object.keys(novelContent.chapters).sort((a, b) => parseInt(a) - parseInt(b)).forEach(num => {
+                const newChapterBtn = document.createElement('button');
+                newChapterBtn.id = `chapter-nav-btn-${num}`;
+                newChapterBtn.className = 'px-4 py-2 bg-[--color-accent-start] hover:bg-[--color-accent-end] text-[--color-text-main] rounded-full font-semibold';
+                newChapterBtn.textContent = `บทที่ ${num}`;
+                newChapterBtn.addEventListener('click', () => { updateNovelContent(); currentView = num; renderContent(); });
+                navigationButtonsEl.appendChild(newChapterBtn);
+            });
+            document.getElementById('plot-nav-btn').addEventListener('click', () => { updateNovelContent(); currentView = 'plot'; renderContent(); });
+            navigationButtonsEl.classList.remove('hidden');
+        }
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            signInAnonymously(auth).then(() => {
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        authStatusEl.textContent = ``;
+                        playHomeAnimation(); 
+                        updateNavBar();
+                        loadNovels();
+                    } else { 
+                        authStatusEl.textContent = `เกิดข้อผิดพลาดในการเข้าสู่ระบบ`;
+                    }
+                });
+            }).catch(error => { 
+                console.error("Anonymous Sign In Error:", error);
+                authStatusEl.textContent = `Firebase เข้าสู่ระบบล้มเหลว`;
+                playHomeAnimation();
+                updateNavBar();
+            });
+        } catch(e) { 
+            console.error("Firebase Init Error:", e);
+            authStatusEl.textContent = `ERROR: ไม่สามารถเริ่มต้น Firebase`;
+            playHomeAnimation();
+            updateNavBar();
+        }
+
+        function setLoading(isLoading) {
+            loadingSpinnerEl.classList.toggle('hidden', !isLoading);
+        }
+
+        function showSaveModal() {
+            if (!userId) return alert('กรุณาเข้าสู่ระบบเพื่อบันทึก');
+            novelTitleInput.value = currentNovel.title || '';
+            novelDescInput.value = novelContent.plot ? novelContent.plot.substring(0, 150) + '...' : '';
+            saveModalEl.classList.remove('hidden');
+        }
+
+        function hideSaveModal() {
+            saveModalEl.classList.add('hidden');
+        }
+
+        async function callGeminiApi(prompt, systemInstruction) {
+            setLoading(true);
+            const apiUrl = `http://localhost:3000/generate-content`; 
+            const payload = { prompt, systemInstruction };
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`Server Error: ${response.status}`);
+                const result = await response.json();
+                return result.text;
+            } catch (error) {
+                console.error("API call error:", error);
+                novelOutputEl.innerHTML = `<p class="text-red-400">เกิดข้อผิดพลาดในการเรียกใช้ AI (ตรวจสอบ Console และ Server)</p>`;
+                return null;
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        function sanitizeAndFormatContent(content) {
+            let text = content.replace(/<br\s*\/?>/g, '\n');
+            let div = document.createElement('div');
+            div.innerHTML = text;
+            return div.textContent || div.innerText || '';
+        }
+
+        function lockPlotInputs(data) {
+            genreInput.value = data.genre;
+            charactersInput.value = data.characters;
+            plotPointsInput.value = data.plotPoints;
+            genreInput.disabled = true;
+            charactersInput.disabled = true;
+            plotPointsInput.disabled = true;
+            generatePlotBtn.classList.add('hidden');
+            saveNovelBtn.classList.remove('hidden');
+        }
+
+        function renderContent() {
+            let contentHTML = '';
+            if (currentView === 'plot') {
+                contentHTML = `<h3><b>พล็อตเรื่อง:</b></h3>${novelContent.plot.replace(/\n/g, '<br>')}`;
+            } else {
+                contentHTML = `<h3><b>บทที่ ${currentView}:</b></h3>${novelContent.chapters[currentView].replace(/\n/g, '<br>')}`;
+            }
+            novelOutputEl.innerHTML = contentHTML;
+
+            document.querySelectorAll('#navigation-buttons button').forEach(btn => btn.classList.remove('bg-[--color-accent-end]'));
+            const activeBtn = (currentView === 'plot') ? document.getElementById('plot-nav-btn') : document.getElementById(`chapter-nav-btn-${currentView}`);
+            if (activeBtn) activeBtn.classList.add('bg-[--color-accent-end]');
+        }
+        
+        function updateNovelContent() {
+            const textContent = sanitizeAndFormatContent(novelOutputEl.innerHTML);
+            if (currentView === 'plot') {
+                novelContent.plot = textContent;
+                currentNovel.plot = textContent; 
+            } else if (novelContent.chapters[currentView] !== undefined) {
+                novelContent.chapters[currentView] = textContent;
+            }
+        }
+        
+        novelOutputEl.addEventListener('input', updateNovelContent);
+
+        generatePlotBtn.addEventListener('click', async () => {
+            const genre = genreInput.value;
+            const characters = charactersInput.value;
+            const plotPoints = document.getElementById('plot-points').value;
+            
+            if (!genre || !characters || !plotPoints) {
+                return alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อน');
+            }
+            
+            // --- TRIGGER LAYOUT CHANGE ---
+            showSideBySideLayout();
+
+            const systemPrompt = "คุณคือผู้ช่วยนักเขียนนิยายมืออาชีพ เขียนพล็อตเรื่องที่น่าสนใจและละเอียดในภาษาไทย โดยอ้างอิงจากข้อมูลที่ให้มา";
+            const userPrompt = `สร้างพล็อตเรื่องสำหรับนิยายในภาษาไทย:\nแนวเรื่อง: ${genre}\nตัวละครหลัก: ${characters}\nจุดสำคัญของเรื่อง: ${plotPoints}\n\nพล็อตเรื่อง:`;
+
+            novelOutputEl.innerHTML = `<p class="text-center text-[--color-accent-end] animate-pulse">กำลังสร้างพล็อตเรื่อง...</p>`;
+            
+            const generatedPlot = await callGeminiApi(userPrompt, systemPrompt);
+            if (generatedPlot) {
+                lockPlotInputs({genre, characters, plotPoints});
+
+                novelContent.chapters = {}; 
+                novelContent.plot = generatedPlot;
+                currentNovel.plot = generatedPlot;
+                currentNovel.title = `${genre} Novel`; 
+                
+                navigationButtonsEl.innerHTML = `<button id="plot-nav-btn" class="px-4 py-2 bg-[--color-accent-start] hover:bg-[--color-accent-end] text-[--color-text-main] rounded-full font-semibold">พล็อต</button>`;
+                document.getElementById('plot-nav-btn').addEventListener('click', () => {
+                    currentView = 'plot';
+                    renderContent();
+                });
+
+                currentView = 'plot';
+                renderContent();
+                navigationButtonsEl.classList.remove('hidden');
+            }
+        });
+        
+        generateChapterBtn.addEventListener('click', async () => {
+            if (!novelContent.plot) return alert('กรุณาสร้างพล็อตเรื่องก่อน');
+            updateNovelContent();
+            
+            const chapterNum = Object.keys(novelContent.chapters).length + 1;
+            const systemPrompt = "คุณคือนักเขียนนิยายผู้มากประสบการณ์ เขียนบทนิยายในภาษาไทยที่สอดคล้องกับพล็อตเรื่องที่ให้มา";
+            const userPrompt = `จากพล็อตเรื่องนี้:\n\n${novelContent.plot}\n\nกรุณาเขียนเนื้อหานิยายสำหรับบทที่ ${chapterNum} ในภาษาไทย:`;
+            
+            novelOutputEl.innerHTML = `<p class="text-center text-[--color-accent-end] animate-pulse">กำลังเขียนบทที่ ${chapterNum}...</p>`;
+
+            const generatedChapter = await callGeminiApi(userPrompt, systemPrompt);
+            if (generatedChapter) {
+                novelContent.chapters[chapterNum] = generatedChapter;
+                currentView = chapterNum;
+                
+                const newChapterBtn = document.createElement('button');
+                newChapterBtn.id = `chapter-nav-btn-${chapterNum}`;
+                newChapterBtn.className = 'px-4 py-2 bg-[--color-accent-start] hover:bg-[--color-accent-end] text-[--color-text-main] rounded-full font-semibold';
+                newChapterBtn.textContent = `บทที่ ${chapterNum}`;
+                navigationButtonsEl.appendChild(newChapterBtn);
+                
+                newChapterBtn.addEventListener('click', () => {
+                    updateNovelContent();
+                    currentView = chapterNum;
+                    renderContent();
+                });
+                
+                renderContent();
+            }
+        });
+        
+        navigationButtonsEl.addEventListener('click', (e) => {
+            if(e.target.id === 'plot-nav-btn'){
+                updateNovelContent(); 
+                currentView = 'plot';
+                renderContent();
+            }
+        });
+        
+        async function updateNovel() {
+            if (!currentEditingDocId) return;
+            setLoading(true);
+
+            // Make sure the latest edits are captured from the contenteditable div
+            updateNovelContent();
+            
+            const docRef = doc(db, `artifacts/${appId}/users/${userId}/novels`, currentEditingDocId);
+            try {
+                await updateDoc(docRef, {
+                    plot: novelContent.plot,
+                    chapters: novelContent.chapters
+                });
+                alert('บันทึกการเปลี่ยนแปลงเรียบร้อยแล้ว!');
+                navigateTo('saved'); // Go back to the saved list
+            } catch (error) {
+                console.error("Error updating novel:", error);
+                alert("เกิดข้อผิดพลาดในการบันทึก");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        
+
+        async function deleteNovel(docId, title) {
+            if (!userId) return;
+            setLoading(true);
+            try {
+                await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/novels`, docId));
+                showSavedNovelList();
+            } catch (error) {
+                console.error("Error deleting novel:", error);
+                alert("เกิดข้อผิดพลาดในการลบนิยาย");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        saveNovelBtn.addEventListener('click', showSaveModal);
+        cancelSaveBtn.addEventListener('click', hideSaveModal);
+
+        confirmSaveBtn.addEventListener('click', async () => {
+            const title = novelTitleInput.value.trim();
+            const description = novelDescInput.value.trim();
+            if (!title) return alert('กรุณาใส่ชื่อนิยายก่อนบันทึก');
+            hideSaveModal();
+            setLoading(true);
+            await saveNovel(title, description);
+        });
+
+        async function saveNovel(title, description) {
+            if (!userId) {
+                setLoading(false);
+                return alert('ไม่สามารถบันทึกได้: ไม่ได้เข้าสู่ระบบ');
+            }
+            try {
+                const novelsCollection = collection(db, `artifacts/${appId}/users/${userId}/novels`);
+                await addDoc(novelsCollection, {
+                    title, description,
+                    genre: genreInput.value,
+                    characters: charactersInput.value,
+                    plotPoints: plotPointsInput.value,
+                    plot: novelContent.plot, 
+                    chapters: novelContent.chapters, 
+                    createdAt: new Date()
+                });
+                alert(`บันทึกนิยาย "${title}" เรียบร้อยแล้ว!`);
+            } catch (error) {
+                console.error("Error saving novel:", error);
+                alert("เกิดข้อผิดพลาดในการบันทึกนิยาย");
+            } finally {
+                setLoading(false); 
+            }
+        }
+
+       
+
+        function showSavedNovelList() {
+            savedListContainer.classList.remove('hidden');
+            savedDetailContainer.classList.add('hidden');
+        }
+
+        backToListBtn.addEventListener('click', showSavedNovelList);
+
+        function loadNovels() {
+            if (!userId) return; 
+            const novelsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/novels`);
+            onSnapshot(novelsCollectionRef, (querySnapshot) => {
+                savedNovelsListEl.innerHTML = querySnapshot.empty ? `<p class="text-center">ไม่มีนิยายที่บันทึกไว้</p>` : ''; 
+                querySnapshot.forEach(docEntry => {
+                    const novelData = docEntry.data();
+                    const docId = docEntry.id;
+                    const desc = novelData.description || (novelData.plot ? novelData.plot.substring(0, 50) + '...' : 'ไม่มีคำอธิบาย');
+
+                    const item = document.createElement('div');
+                    item.className = 'flex justify-between items-center bg-[--color-bg-box] p-4 rounded-xl hover:bg-[#F2EFE8] border border-[--color-accent-start]';
+                    item.innerHTML = `
+                        <div class="cursor-pointer flex-grow min-w-0">
+                            <p class="font-semibold truncate">${novelData.title}</p>
+                            <p class="text-sm truncate">${desc}</p>
+                        </div>
+                        <button class="delete-btn text-red-600 hover:text-red-800 p-2 rounded-full flex-shrink-0">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>`;
+                    
+                    item.querySelector('.cursor-pointer').addEventListener('click', () => renderSavedNovelDetail(novelData, docId));
+                    item.querySelector('.delete-btn').addEventListener('click', (e) => {
+                        e.stopPropagation(); 
+                        if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบนิยาย "${novelData.title}"?`)) {
+                            deleteNovel(docId, novelData.title);
+                        }
+                    });
+                    savedNovelsListEl.appendChild(item);
+                });
+            }, (error) => {
+                console.error("onSnapshot error:", error);
+                savedNovelsListEl.innerHTML = `<p class="text-red-400">เกิดข้อผิดพลาดในการโหลดนิยาย</p>`;
+            });
+        }
+
+        playHomeAnimation();
+    </script>
+</body>
+</html>
+
